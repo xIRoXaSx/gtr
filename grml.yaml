@@ -1,0 +1,41 @@
+# =~=~=~=~=~=~=~=~=~=~=~
+#          __          
+#    _____/  |________ 
+#   / ___\   __\_  __ \
+#  / /_/  >  |  |  | \/
+#  \___  /|__|  |__|   
+# /_____/              
+# =~=~=~=~=~=~=~=~=~=~=~
+#
+# > What is this file used for?
+#    This file is designed to run with grml to simplify various tasks.
+#    Head over to https://github.com/desertbit/grml, get / compile and setup grml.
+#    Afterwards you can use these tasks.
+
+version: 1
+project: gtr
+
+env:
+  VERSION:  0.1.0
+  GO_VERSION: "1.20"
+
+  # Go test packages
+  GO_TEST_PKGS: "."
+
+interpreter: sh
+
+commands:
+  test:
+    help: test all packages
+    exec: |
+      go test -cover ${GO_TEST_PKGS}
+    commands:
+      docker:
+        help: test all packages via go's docker image.
+        exec: |
+          sudo docker run \
+            -v="$PWD:/data:ro" \
+            -w=/data \
+            --rm \
+            golang:${GO_VERSION} \
+              && go test -cover ${GO_TEST_PKGS}

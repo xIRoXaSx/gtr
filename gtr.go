@@ -3,8 +3,6 @@ package gtr
 import (
 	"errors"
 	"sync"
-
-	"github.com/xiroxasx/gtr/pkg/locale"
 )
 
 var (
@@ -13,12 +11,12 @@ var (
 
 type Translator struct {
 	translations translations
-	activeLocale locale.Locale
+	activeLocale Locale
 	mx           *sync.Mutex
 }
 
 type translations struct {
-	mappings map[locale.Locale]dictionary
+	mappings map[Locale]dictionary
 	mx       *sync.Mutex
 }
 
@@ -27,7 +25,7 @@ type dictionary map[string]string
 func New() *Translator {
 	return &Translator{
 		translations: translations{
-			mappings: make(map[locale.Locale]dictionary, 0),
+			mappings: make(map[Locale]dictionary, 0),
 			mx:       &sync.Mutex{},
 		},
 		mx: &sync.Mutex{},
@@ -35,14 +33,14 @@ func New() *Translator {
 }
 
 // Use sets the active locale.
-func (t *Translator) Use(loc locale.Locale) {
+func (t *Translator) Use(loc Locale) {
 	t.mx.Lock()
 	defer t.mx.Unlock()
 
 	t.activeLocale = loc
 }
 
-func (t *Translator) Active() locale.Locale {
+func (t *Translator) Active() Locale {
 	return t.activeLocale
 }
 
@@ -52,7 +50,7 @@ func (t *Translator) Register(key, val string) (err error) {
 	t.mx.Lock()
 	defer t.mx.Unlock()
 
-	if t.activeLocale == (locale.Locale{}) {
+	if t.activeLocale == (Locale{}) {
 		err = ErrInvalidActiveLocale
 		return
 	}
@@ -62,7 +60,7 @@ func (t *Translator) Register(key, val string) (err error) {
 
 // RegisterFor adds a new dictionary entry for the given locale.
 // Registering the key twice, will overwrite the old value.
-func (t *Translator) RegisterFor(loc locale.Locale, key, val string) {
+func (t *Translator) RegisterFor(loc Locale, key, val string) {
 	t.mx.Lock()
 	defer t.mx.Unlock()
 
@@ -78,9 +76,18 @@ func (t *Translator) Get(k string) string {
 	return t.translations.mappings[t.activeLocale][k]
 }
 
+// Get gets the translation of the given locale.
+// If no locale is set ot the key has not been found, the returned value is an empty string.
+func (t *Translator) GetFor(loc Locale, k string) string {
+	t.translations.mx.Lock()
+	defer t.translations.mx.Unlock()
+
+	return t.translations.mappings[loc][k]
+}
+
 // Load sets the translations for the given locale.
 // If replace is true, existing translations will be overwritten.
-func (t *Translator) Load(loc locale.Locale, replace bool, dict map[string]string) {
+func (t *Translator) Load(loc Locale, replace bool, dict map[string]string) {
 	t.mx.Lock()
 	defer t.mx.Unlock()
 
@@ -109,15 +116,15 @@ func (t *Translator) ClearAll() {
 	t.translations.mx.Lock()
 	defer t.translations.mx.Unlock()
 
-	t.translations.mappings = make(map[locale.Locale]dictionary, 0)
+	t.translations.mappings = make(map[Locale]dictionary, 0)
 }
 
 // Clear clears the dictionary for the currently active locale.
-func (t *Translator) Clear(loc locale.Locale) (err error) {
+func (t *Translator) Clear() (err error) {
 	t.translations.mx.Lock()
 	defer t.translations.mx.Unlock()
 
-	if t.activeLocale == (locale.Locale{}) {
+	if t.activeLocale == (Locale{}) {
 		err = ErrInvalidActiveLocale
 		return
 	}
@@ -127,7 +134,7 @@ func (t *Translator) Clear(loc locale.Locale) (err error) {
 }
 
 // ClearFor clears the dictionary for the given locale.
-func (t *Translator) ClearFor(loc locale.Locale) {
+func (t *Translator) ClearFor(loc Locale) {
 	t.translations.mx.Lock()
 	defer t.translations.mx.Unlock()
 
@@ -140,23 +147,31 @@ func (t *Translator) HasKey(k string) bool {
 }
 
 // HasKey checks whether a given key exists for the given translation.
-func (t *Translator) HasKeyIn(loc locale.Locale, k string) bool {
+func (t *Translator) HasKeyFor(loc Locale, k string) bool {
 	return t.translations.mappings[loc].hasKey(k)
 }
 
 // HasValue checks whether a given value exists for the active translation.
-func (t *Translator) HasValue(v string) (ok bool, k string) {
+func (t *Translator) HasValue(v string) (ok bool) {
 	return t.translations.mappings[t.activeLocale].hasValue(v)
 }
 
 // HasValue checks whether a given value exists for the given translation.
-func (t *Translator) HasValueIn(loc locale.Locale, v string) (ok bool, k string) {
+func (t *Translator) HasValueFor(loc Locale, v string) (ok bool) {
 	return t.translations.mappings[loc].hasValue(v)
+}
+
+func (t *Translator) Len() int {
+	return len(t.translations.mappings[t.activeLocale])
+}
+
+func (t *Translator) LenFor(loc Locale) int {
+	return len(t.translations.mappings[loc])
 }
 
 // registerFor registers a translation in a specific locale.
 // Caller must ensure to lock t beforehand!
-func (t *Translator) registerFor(loc locale.Locale, k, v string) {
+func (t *Translator) registerFor(loc Locale, k, v string) {
 	_, ok := t.translations.mappings[loc]
 	if !ok {
 		t.translations.mappings[loc] = make(dictionary, 0)
@@ -169,10 +184,10 @@ func (d dictionary) hasKey(k string) (ok bool) {
 	return
 }
 
-func (d dictionary) hasValue(v string) (ok bool, k string) {
-	for key, val := range d {
+func (d dictionary) hasValue(v string) (ok bool) {
+	for _, val := range d {
 		if val == v {
-			return true, key
+			return true
 		}
 	}
 	return

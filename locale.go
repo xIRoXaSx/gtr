@@ -1,4 +1,4 @@
-package locale
+package gtr
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ type Locale struct {
 	Territory string
 }
 
-func New(lang, ter string) Locale {
+func NewLocale(lang, ter string) Locale {
 	return Locale{
 		Language:  strings.ToLower(lang),
 		Territory: strings.ToUpper(ter),
@@ -39,6 +39,6 @@ func NewFromString(locValue string) (l Locale, err error) {
 	return
 }
 
-func (l *Locale) String() string {
+func (l Locale) String() string {
 	return l.Language + localeValueSeparator + l.Territory
 }
