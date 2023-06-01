@@ -1,12 +1,7 @@
 package gtr
 
 import (
-	"errors"
 	"sync"
-)
-
-var (
-	ErrInvalidActiveLocale = errors.New("invalid active locale")
 )
 
 type Translator struct {
@@ -22,8 +17,9 @@ type translations struct {
 
 type dictionary map[string]string
 
-func New() *Translator {
+func New(activeLocale Locale) *Translator {
 	return &Translator{
+		activeLocale: activeLocale,
 		translations: translations{
 			mappings: make(map[Locale]dictionary, 0),
 			mx:       &sync.Mutex{},
@@ -46,12 +42,12 @@ func (t *Translator) Active() Locale {
 
 // Register adds a new dictionary entry for the currently active locale.
 // Registering the key twice, will overwrite the old value.
-func (t *Translator) Register(key, val string) (err error) {
+// The translation will not be stored if the activeLocale is empty.
+func (t *Translator) Register(key, val string) {
 	t.mx.Lock()
 	defer t.mx.Unlock()
 
 	if t.activeLocale == (Locale{}) {
-		err = ErrInvalidActiveLocale
 		return
 	}
 	t.registerFor(t.activeLocale, key, val)
@@ -120,12 +116,12 @@ func (t *Translator) ClearAll() {
 }
 
 // Clear clears the dictionary for the currently active locale.
-func (t *Translator) Clear() (err error) {
+// The translations will not be cleared if the activeLocale is empty.
+func (t *Translator) Clear() {
 	t.translations.mx.Lock()
 	defer t.translations.mx.Unlock()
 
 	if t.activeLocale == (Locale{}) {
-		err = ErrInvalidActiveLocale
 		return
 	}
 

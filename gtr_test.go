@@ -9,19 +9,22 @@ import (
 )
 
 func TestTranslator(t *testing.T) {
-	tr := gtr.New()
-	r.Exactly(t, gtr.Locale{}, tr.Active())
-	_, err := gtr.NewFromString("deDE")
+	const loc = "de_DE"
+	deDE, err := gtr.NewFromString(loc)
+	enUS := gtr.NewLocale("en", "US")
+
+	tr := gtr.New(deDE)
+	r.Exactly(t, deDE, tr.Active())
+	_, err = gtr.NewFromString("deDE")
 	r.ErrorIs(t, gtr.ErrInvalidLocale, err)
+	tr.Use(gtr.Locale{})
 	r.Exactly(t, gtr.Locale{}, tr.Active())
-	r.ErrorIs(t, gtr.ErrInvalidActiveLocale, tr.Register("test", "Test"))
+	tr.Register("test", "Test")
+	r.Exactly(t, 0, tr.Len())
 
 	trLen := 3
 	createDummyEntries := func(tr *gtr.Translator, baseKey, baseValue string) {
-		locs := []gtr.Locale{
-			gtr.NewLocale("de", "DE"),
-			gtr.NewLocale("en", "US"),
-		}
+		locs := []gtr.Locale{deDE, enUS}
 		for _, l := range locs {
 			for i := 0; i < trLen; i++ {
 				tr.RegisterFor(l, fmt.Sprintf("%s%d", baseKey, i), fmt.Sprintf("%s%d", baseValue, i))
@@ -31,20 +34,17 @@ func TestTranslator(t *testing.T) {
 
 	const trKey = "test"
 	const trVal = "Test"
-	const loc = "de_DE"
-	deDE, err := gtr.NewFromString(loc)
-	enUS := gtr.NewLocale("en", "US")
 	lastKey := fmt.Sprintf("%s%d", trKey, trLen-1)
 	lastValue := fmt.Sprintf("%s%d", trVal, trLen-1)
-	r.NoError(t, err)
 	r.Empty(t, tr.Get("NotExisting"))
 	r.Empty(t, tr.Get(""))
-	r.Error(t, tr.Register(trKey, trVal))
-	r.ErrorIs(t, gtr.ErrInvalidActiveLocale, tr.Clear())
+	tr.Register(trKey, trVal)
+	tr.Clear()
+	r.Exactly(t, 0, tr.Len())
 
 	tr.Use(deDE)
 	r.Exactly(t, loc, tr.Active().String())
-	r.NoError(t, tr.Register(trKey, trVal))
+	tr.Register(trKey, trVal)
 	createDummyEntries(tr, trKey, trVal)
 
 	r.Exactly(t, trVal, tr.Get(trKey))
@@ -53,7 +53,7 @@ func TestTranslator(t *testing.T) {
 	r.Empty(t, tr.Get(fmt.Sprintf("%s%d", trKey, trLen)))
 	r.Exactly(t, fmt.Sprintf("%s%d", trVal, trLen-1), tr.Get(lastKey))
 
-	r.NoError(t, tr.Clear())
+	tr.Clear()
 	r.Exactly(t, 0, tr.Len())
 	tr.ClearFor(enUS)
 	r.Exactly(t, 0, tr.LenFor(enUS))
